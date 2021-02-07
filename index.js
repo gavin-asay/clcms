@@ -19,8 +19,22 @@ function getQueryData(sql, params = []) {
 				return;
 			}
 
+			if (res.length === 0) {
+				reject();
+				console.log('No data found.');
+				return;
+			}
+
 			resolve(res);
 		});
+	});
+}
+
+function showUpdatedTable(table) {
+	const sql = `SELECT * FROM ${table}`;
+	connection.query(sql, function (err, res) {
+		if (err) throw err;
+		console.table(res);
 	});
 }
 
@@ -49,12 +63,24 @@ function mainMenu() {
 			const { main } = ans;
 			const tables = ['departments', 'roles', 'employees'];
 
-			if (main <= 2) {
-				const sql = `SELECT * FROM ${tables[main]}`;
+			if (main === 0) {
+				const sql = `SELECT * FROM departments`;
 
-				connection.query(sql, [], function (err, res) {
-					if (err) throw err;
+				getQueryData(sql).then(res => console.table(res));
+			} else if (main === 1) {
+				const sql = `SELECT roles.id, roles.title, roles.salary, departments.name AS department FROM roles
+				JOIN departments ON roles.department_id = departments.id`;
+
+				getQueryData(sql).then(res => {
 					console.table(res);
+					mainMenu();
+				});
+			} else if (main === 2) {
+				const sql = `SELECT e.id, e.first_name, e.last_name, e.manager_id AS manager, r.title AS role FROM employees e LEFT JOIN roles r ON e.role_id = r.id LEFT JOIN employees m ON e.id = m.manager_id`;
+
+				getQueryData(sql).then(res => {
+					console.table(res);
+					mainMenu();
 				});
 			} else if (main === 3) {
 				inquirer
@@ -100,4 +126,3 @@ function mainMenu() {
 }
 
 mainMenu();
-module.exports = getQueryData;
