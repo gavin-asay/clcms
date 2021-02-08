@@ -19,3 +19,5 @@ This application requires a MySQL installation. To set up the database, navigate
 At the root directory, run `node index` to start the application.
 
 The main menu will appear. Hit return to select an option. Either a table with database data will be displayed, or additional prompts will be offered to add new data.
+
+[Walkthrough Video](https://youtu.be/XV1OawHiJp8)
