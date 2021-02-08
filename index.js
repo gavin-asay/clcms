@@ -2,6 +2,7 @@ const inquirer = require('inquirer');
 const mysql = require('mysql2');
 const cTable = require('console.table');
 const addNewRole = require('./utils/addNewRole');
+const addDepartment = require('./utils/addDepartment');
 
 const connection = mysql.createConnection({
 	host: 'localhost',
@@ -47,6 +48,7 @@ function mainMenu() {
 		'Add a role',
 		'Add an employee',
 		'Update an employee role',
+		'Exit program',
 	];
 
 	inquirer
@@ -61,7 +63,6 @@ function mainMenu() {
 		])
 		.then(ans => {
 			const { main } = ans;
-			const tables = ['departments', 'roles', 'employees'];
 
 			if (main === 0) {
 				const sql = `SELECT * FROM departments`;
@@ -73,38 +74,23 @@ function mainMenu() {
 
 				getQueryData(sql).then(res => {
 					console.table(res);
-					mainMenu();
 				});
 			} else if (main === 2) {
 				const sql = `SELECT e.id, e.last_name, e.first_name, r.title AS role, CONCAT(m.first_name, ' ', m.last_name) AS manager FROM employees e LEFT JOIN employees m ON m.id = e.manager_id LEFT JOIN roles r ON e.role_id = r.id`;
 
 				getQueryData(sql).then(res => {
 					console.table(res);
-					mainMenu();
 				});
 			} else if (main === 3) {
-				inquirer
-					.prompt([
-						{
-							type: 'input',
-							name: 'userText',
-							message: 'Enter the name of the new department.',
-							validate: input => {
-								if (input) return true;
-								console.log('Please enter a name.');
-								return false;
-							},
-						},
-					])
-					.then(ans => {
-						const { userText } = ans;
-						const sql = `INSERT INTO departments (name) VALUES ('${userText}')`;
+				addDepartment().then(ans => {
+					const { userText } = ans;
+					const sql = `INSERT INTO departments (name) VALUES ('${userText}')`;
 
-						getQueryData(sql).then(res => {
-							if (res.affectedRows > 0)
-								console.log(`Department ${userText} added successfully!`);
-						});
+					getQueryData(sql).then(res => {
+						if (res.affectedRows > 0)
+							console.log(`Department ${userText} added successfully!`);
 					});
+				});
 			} else if (main === 4) {
 				const sql = `SELECT name, id FROM departments`;
 				getQueryData(sql)
@@ -181,7 +167,57 @@ function mainMenu() {
 							});
 					});
 				});
+			} else if (main === 6) {
+				let employee;
+				const sql0 = `SELECT CONCAT(employees.first_name, ' ', employees.last_name) AS name FROM employees`;
+				getQueryData(sql0)
+					.then(res => {
+						const employees = res.map(row => row.name);
+
+						return inquirer.prompt([
+							{
+								type: 'list',
+								name: 'employee',
+								message: 'Select an employee to update.',
+								choices: employees,
+								filter: input => [input, employees.indexOf(input) + 1],
+							},
+						]);
+					})
+					.then(ans => {
+						employee = ans.employee;
+						const sql1 = `SELECT title FROM roles`;
+						return getQueryData(sql1);
+					})
+					.then(res => {
+						console.log(res);
+						const roles = res.map(row => row.title);
+
+						return inquirer.prompt([
+							{
+								type: 'list',
+								name: 'newRole',
+								messages: `Select a new role for ${employee[0]}.`,
+								choices: roles,
+								filter: input => roles.indexOf(input) + 1,
+							},
+						]);
+					})
+					.then(ans => {
+						const sql2 = `UPDATE employees SET role_id = ? WHERE id = ?`;
+						const params = [ans.newRole, employee[1]];
+
+						return getQueryData(sql2, params);
+					})
+					.then(res => {
+						if (res.affectedRows > 0) console.log('Role added successfully!');
+					});
+			} else if (main === 7) {
+				console.log('Goodbye.');
+				connection.end();
+				return;
 			}
+			mainMenu();
 		})
 		.catch(err => {
 			console.log(err);
