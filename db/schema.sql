@@ -1,14 +1,12 @@
-DROP TABLE IF EXISTS departments;
-DROP TABLE IF EXISTS roles;
-DROP TABLE IF EXISTS employees;
+CREATE DATABASE IF NOT EXISTS clcms;
 
-CREATE TABLE departments (
+CREATE TABLE IF NOT EXISTS departments (
     id INTEGER UNSIGNED AUTO_INCREMENT,
     name VARCHAR(30),
     PRIMARY KEY(id)
 );
 
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
     id INTEGER UNSIGNED AUTO_INCREMENT,
     title VARCHAR(50),
     salary DECIMAL UNSIGNED,
@@ -17,7 +15,7 @@ CREATE TABLE roles (
     FOREIGN KEY(department_id) REFERENCES departments(id) ON DELETE SET NULL
 );
 
-CREATE TABLE employees (
+CREATE TABLE IF NOT EXISTS employees (
     id INTEGER UNSIGNED AUTO_INCREMENT,
     first_name VARCHAR(30),
     last_name VARCHAR(30),
