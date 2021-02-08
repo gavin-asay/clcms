@@ -20,7 +20,7 @@ function getQueryData(sql, params = []) {
 			}
 
 			if (res.length === 0) {
-				reject();
+				reject('No data found.');
 				console.log('No data found.');
 				return;
 			}
@@ -76,7 +76,7 @@ function mainMenu() {
 					mainMenu();
 				});
 			} else if (main === 2) {
-				const sql = `SELECT e.id, e.first_name, e.last_name, e.manager_id AS manager, r.title AS role FROM employees e LEFT JOIN roles r ON e.role_id = r.id LEFT JOIN employees m ON e.id = m.manager_id`;
+				const sql = `SELECT e.id, e.last_name, e.first_name, r.title AS role, CONCAT(m.first_name, ' ', m.last_name) AS manager FROM employees e LEFT JOIN employees m ON m.id = e.manager_id LEFT JOIN roles r ON e.role_id = r.id`;
 
 				getQueryData(sql).then(res => {
 					console.table(res);
@@ -100,8 +100,7 @@ function mainMenu() {
 						const { userText } = ans;
 						const sql = `INSERT INTO departments (name) VALUES ('${userText}')`;
 
-						connection.query(sql, [], function (err, res) {
-							if (err) throw err;
+						getQueryData(sql).then(res => {
 							if (res.affectedRows > 0)
 								console.log(`Department ${userText} added successfully!`);
 						});
@@ -117,6 +116,71 @@ function mainMenu() {
 							if (res.affectedRows > 0) console.log('Role added successfully!');
 						});
 					});
+			} else if (main === 5) {
+				let managers;
+				let roles;
+
+				const sql0 = `SELECT * FROM roles`;
+				const sql1 = `SELECT CONCAT(employees.first_name, ' ', employees.last_name) AS name FROM employees`;
+
+				getQueryData(sql0).then(res => {
+					roles = res.map(row => row.title);
+					getQueryData(sql1).then(res => {
+						managers = res.map(row => row.name);
+						managers.unshift('None');
+						inquirer
+							.prompt([
+								{
+									type: 'input',
+									name: 'first_name',
+									message: "Enter the employee's first name.",
+									validate: input => {
+										if (typeof input === 'string' && input.length > 0)
+											return true;
+										return false;
+									},
+								},
+								{
+									type: 'input',
+									name: 'last_name',
+									message: "Enter the employee's last name.",
+									validate: input => {
+										if (typeof input === 'string' && input.length > 0)
+											return true;
+										return false;
+									},
+								},
+								{
+									type: 'list',
+									name: 'role',
+									choices: roles,
+									message: "Select the employee's role.",
+									filter: input => roles.indexOf(input) + 1,
+								},
+								{
+									type: 'list',
+									name: 'manager',
+									choices: managers,
+									message: "Select the employee's manager.",
+									filter: input => {
+										if (input === 'None') return null;
+										return managers.indexOf(input);
+									},
+								},
+							])
+							.then(ans => {
+								const { first_name, last_name, role, manager } = ans;
+
+								const sql = `INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`;
+								const params = [first_name, last_name, role, manager];
+
+								getQueryData(sql, params).then(res => {
+									if (res.affectedRows > 0)
+										console.log('Role added successfully!');
+								});
+							});
+					});
+				});
 			}
 		})
 		.catch(err => {
