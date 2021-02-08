@@ -1,4 +1,6 @@
-function addEmployee(res) {
+const inquirer = require('inquirer');
+
+function addEmployee(res, roles) {
 	managers = res.map(row => row.name);
 	managers.unshift('None');
 	return inquirer.prompt([

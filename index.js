@@ -13,6 +13,7 @@ const connection = mysql.createConnection({
 	database: 'clcms',
 });
 
+// packaging query results in a promise helped me enforce proper sequence of code segments
 function getQueryData(sql, params = []) {
 	return new Promise(function (resolve, reject) {
 		connection.query(sql, params, function (err, res) {
@@ -44,14 +45,14 @@ function mainMenu() {
 		'Exit program',
 	];
 
-	return inquirer
+	inquirer
 		.prompt([
 			{
 				type: 'list',
 				name: 'main',
-				message: 'Select an option.',
+				message: 'Welcome to CLCMS! Select an option.',
 				choices: options,
-				filter: input => options.indexOf(input),
+				filter: input => options.indexOf(input), // changes the answer for this question to the index of the selected option (see array above)
 			},
 		])
 		.then(ans => {
@@ -63,8 +64,8 @@ function mainMenu() {
 				getQueryData(sql).then(res => {
 					console.log('\n\n');
 					console.table(res);
+					setTimeout(mainMenu, 2000);
 				});
-				return true;
 			} else if (main === 1) {
 				const sql = `SELECT roles.id, roles.title, roles.salary, departments.name AS department FROM roles
 				JOIN departments ON roles.department_id = departments.id`;
@@ -72,36 +73,38 @@ function mainMenu() {
 				getQueryData(sql).then(res => {
 					console.log('\n\n');
 					console.table(res);
+					setTimeout(mainMenu, 2000);
 				});
-				return true;
 			} else if (main === 2) {
 				const sql = `SELECT e.id, e.last_name, e.first_name, r.title AS role, CONCAT(m.first_name, ' ', m.last_name) AS manager FROM employees e LEFT JOIN employees m ON m.id = e.manager_id LEFT JOIN roles r ON e.role_id = r.id`;
 
 				getQueryData(sql).then(res => {
 					console.log('\n\n');
 					console.table(res);
+					setTimeout(mainMenu, 2000);
 				});
-				return true;
 			} else if (main === 3) {
 				addDepartment().then(ans => {
+					// see ./utils/addDepartment
 					const { userText } = ans;
 					const sql = `INSERT INTO departments (name) VALUES ('${userText}')`;
 
 					getQueryData(sql).then(res => {
 						if (res.affectedRows > 0)
 							console.log(`Department ${userText} added successfully!`);
+						setTimeout(mainMenu, 1000);
 					});
 				});
-				return true;
 			} else if (main === 4) {
 				const sql = `SELECT name, id FROM departments`;
 				getQueryData(sql)
-					.then(res => addNewRole(res))
+					.then(res => addNewRole(res)) // see ./utils/addNewRole
 					.then(ans => {
 						const { title, salary, dept } = ans;
 						const sql = `INSERT INTO roles (title, salary, department_id) VALUES ('${title}', '${salary}', '${dept}')`;
 						getQueryData(sql).then(res => {
 							if (res.affectedRows > 0) console.log('Role added successfully!');
+							setTimeout(mainMenu, 1000);
 						});
 					});
 				return true;
@@ -117,7 +120,7 @@ function mainMenu() {
 						roles = res.map(row => row.title);
 						return getQueryData(sql1);
 					})
-					.then(res => addEmployee(res))
+					.then(res => addEmployee(res, roles)) // see ./utils/addEmployee
 					.then(ans => {
 						const { first_name, last_name, role, manager } = ans;
 
@@ -126,6 +129,7 @@ function mainMenu() {
 
 						getQueryData(sql, params).then(res => {
 							if (res.affectedRows > 0) console.log('Role added successfully!');
+							setTimeout(mainMenu, 1000);
 						});
 					});
 				return true;
@@ -173,22 +177,15 @@ function mainMenu() {
 					})
 					.then(res => {
 						if (res.affectedRows > 0) console.log('Role added successfully!');
+						setTimeout(mainMenu, 1000);
 					});
-				return true;
 			} else if (main === 7) {
-				return false;
+				console.log('Goodbye.');
+				connection.end();
 			}
 		})
 		.catch(err => {
 			console.log(err);
-		})
-		.then(ans => {
-			if (ans) {
-				mainMenu();
-				return;
-			}
-			console.log('Goodbye.');
-			connection.end();
 		});
 }
 
