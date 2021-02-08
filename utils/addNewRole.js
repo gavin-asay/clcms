@@ -1,5 +1,4 @@
 const inquirer = require('inquirer');
-const mysql = require('mysql2');
 
 function addNewRole(res) {
 	const departments = res.map(row => row.name);

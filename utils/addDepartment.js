@@ -1,3 +1,5 @@
+const inquirer = require('inquirer');
+
 function addDepartment() {
 	return inquirer.prompt([
 		{

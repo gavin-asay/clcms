@@ -3,6 +3,7 @@ const mysql = require('mysql2');
 const cTable = require('console.table');
 const addNewRole = require('./utils/addNewRole');
 const addDepartment = require('./utils/addDepartment');
+const addEmployee = require('./utils/addEmployee');
 
 const connection = mysql.createConnection({
 	host: 'localhost',
@@ -31,14 +32,6 @@ function getQueryData(sql, params = []) {
 	});
 }
 
-function showUpdatedTable(table) {
-	const sql = `SELECT * FROM ${table}`;
-	connection.query(sql, function (err, res) {
-		if (err) throw err;
-		console.table(res);
-	});
-}
-
 function mainMenu() {
 	const options = [
 		'View all departments',
@@ -51,7 +44,7 @@ function mainMenu() {
 		'Exit program',
 	];
 
-	inquirer
+	return inquirer
 		.prompt([
 			{
 				type: 'list',
@@ -67,20 +60,28 @@ function mainMenu() {
 			if (main === 0) {
 				const sql = `SELECT * FROM departments`;
 
-				getQueryData(sql).then(res => console.table(res));
+				getQueryData(sql).then(res => {
+					console.log('\n\n');
+					console.table(res);
+				});
+				return true;
 			} else if (main === 1) {
 				const sql = `SELECT roles.id, roles.title, roles.salary, departments.name AS department FROM roles
 				JOIN departments ON roles.department_id = departments.id`;
 
 				getQueryData(sql).then(res => {
+					console.log('\n\n');
 					console.table(res);
 				});
+				return true;
 			} else if (main === 2) {
 				const sql = `SELECT e.id, e.last_name, e.first_name, r.title AS role, CONCAT(m.first_name, ' ', m.last_name) AS manager FROM employees e LEFT JOIN employees m ON m.id = e.manager_id LEFT JOIN roles r ON e.role_id = r.id`;
 
 				getQueryData(sql).then(res => {
+					console.log('\n\n');
 					console.table(res);
 				});
+				return true;
 			} else if (main === 3) {
 				addDepartment().then(ans => {
 					const { userText } = ans;
@@ -91,6 +92,7 @@ function mainMenu() {
 							console.log(`Department ${userText} added successfully!`);
 					});
 				});
+				return true;
 			} else if (main === 4) {
 				const sql = `SELECT name, id FROM departments`;
 				getQueryData(sql)
@@ -102,6 +104,7 @@ function mainMenu() {
 							if (res.affectedRows > 0) console.log('Role added successfully!');
 						});
 					});
+				return true;
 			} else if (main === 5) {
 				let managers;
 				let roles;
@@ -109,64 +112,23 @@ function mainMenu() {
 				const sql0 = `SELECT * FROM roles`;
 				const sql1 = `SELECT CONCAT(employees.first_name, ' ', employees.last_name) AS name FROM employees`;
 
-				getQueryData(sql0).then(res => {
-					roles = res.map(row => row.title);
-					getQueryData(sql1).then(res => {
-						managers = res.map(row => row.name);
-						managers.unshift('None');
-						inquirer
-							.prompt([
-								{
-									type: 'input',
-									name: 'first_name',
-									message: "Enter the employee's first name.",
-									validate: input => {
-										if (typeof input === 'string' && input.length > 0)
-											return true;
-										return false;
-									},
-								},
-								{
-									type: 'input',
-									name: 'last_name',
-									message: "Enter the employee's last name.",
-									validate: input => {
-										if (typeof input === 'string' && input.length > 0)
-											return true;
-										return false;
-									},
-								},
-								{
-									type: 'list',
-									name: 'role',
-									choices: roles,
-									message: "Select the employee's role.",
-									filter: input => roles.indexOf(input) + 1,
-								},
-								{
-									type: 'list',
-									name: 'manager',
-									choices: managers,
-									message: "Select the employee's manager.",
-									filter: input => {
-										if (input === 'None') return null;
-										return managers.indexOf(input);
-									},
-								},
-							])
-							.then(ans => {
-								const { first_name, last_name, role, manager } = ans;
+				getQueryData(sql0)
+					.then(res => {
+						roles = res.map(row => row.title);
+						return getQueryData(sql1);
+					})
+					.then(res => addEmployee(res))
+					.then(ans => {
+						const { first_name, last_name, role, manager } = ans;
 
-								const sql = `INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`;
-								const params = [first_name, last_name, role, manager];
+						const sql = `INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`;
+						const params = [first_name, last_name, role, manager];
 
-								getQueryData(sql, params).then(res => {
-									if (res.affectedRows > 0)
-										console.log('Role added successfully!');
-								});
-							});
+						getQueryData(sql, params).then(res => {
+							if (res.affectedRows > 0) console.log('Role added successfully!');
+						});
 					});
-				});
+				return true;
 			} else if (main === 6) {
 				let employee;
 				const sql0 = `SELECT CONCAT(employees.first_name, ' ', employees.last_name) AS name FROM employees`;
@@ -212,15 +174,20 @@ function mainMenu() {
 					.then(res => {
 						if (res.affectedRows > 0) console.log('Role added successfully!');
 					});
+				return true;
 			} else if (main === 7) {
-				console.log('Goodbye.');
-				connection.end();
-				return;
+				return false;
 			}
-			mainMenu();
 		})
 		.catch(err => {
 			console.log(err);
+		})
+		.then(ans => {
+			if (ans) {
+				mainMenu();
+				return;
+			}
+			console.log('Goodbye.');
 			connection.end();
 		});
 }
